@@ -380,6 +380,22 @@ def generate(req: GenerateRequest):
             config=config,
         )
 
+        # Validate response exists
+        if not response or not hasattr(response, 'text'):
+            logger.error("Invalid response from Gemini API: response object is missing or malformed")
+            raise HTTPException(
+                status_code=500,
+                detail="Invalid response from Gemini API: no response object"
+            )
+        
+        # Check if response.text is None or empty
+        if response.text is None:
+            logger.error("Gemini API returned None response text")
+            raise HTTPException(
+                status_code=500,
+                detail="Gemini API returned empty response. This may be due to content filtering or API issues."
+            )
+        
         # Parse response - try JSON first, fallback to raw text
         try:
             parsed_output = json.loads(response.text)
