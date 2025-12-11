@@ -389,11 +389,14 @@ def generate(req: GenerateRequest):
             )
         
         # Check if response.text is None or empty
-        if response.text is None:
-            logger.error("Gemini API returned None response text")
+        if response.text is None or response.text == "":
+            logger.error(f"Gemini API returned empty response text. Response object: {response}")
+            # Log additional details for debugging
+            if hasattr(response, 'candidates') and response.candidates:
+                logger.error(f"Response has candidates but no text. Candidates: {response.candidates}")
             raise HTTPException(
                 status_code=500,
-                detail="Gemini API returned empty response. This may be due to content filtering or API issues."
+                detail="Gemini API returned empty response. This may be due to content filtering, safety blocks, or API issues."
             )
         
         # Parse response - try JSON first, fallback to raw text
@@ -402,6 +405,13 @@ def generate(req: GenerateRequest):
         except json.JSONDecodeError:
             # Not JSON, return as-is (could be markdown, text, etc.)
             parsed_output = response.text
+        except TypeError as e:
+            # Handle case where response.text is not a valid type for json.loads
+            logger.error(f"TypeError when parsing response: {e}. Response text type: {type(response.text)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to parse response: {str(e)}"
+            )
 
         # Extract token usage
         input_tokens, output_tokens, total_tokens = extract_token_counts(
