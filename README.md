@@ -24,9 +24,6 @@ pip install -r requirements.txt
 
 ```env
 GEMINI_API_KEY=your-api-key-here
-# OR
-GOOGLE_API_KEY=your-api-key-here
-
 THINKING_ENABLED=true
 THINKING_LEVEL=HIGH
 ```
@@ -182,12 +179,11 @@ curl -X POST "http://localhost:8000/generate" \
 
 ## Environment Variables
 
-| Variable           | Required | Default  | Options                 | Description                             |
-| ------------------ | -------- | -------- | ----------------------- | --------------------------------------- |
-| `GEMINI_API_KEY`   | ✅ Yes\* | -        | Your API key            | Google AI API key (\*or GOOGLE_API_KEY) |
-| `GOOGLE_API_KEY`   | ✅ Yes\* | -        | Your API key            | Alternative for GEMINI_API_KEY          |
-| `THINKING_ENABLED` | ❌ No    | `false`  | `true`, `false`         | Enable thinking mode                    |
-| `THINKING_LEVEL`   | ❌ No    | `MEDIUM` | `LOW`, `MEDIUM`, `HIGH` | Reasoning depth                         |
+| Variable           | Required | Default  | Options                 | Description          |
+| ------------------ | -------- | -------- | ----------------------- | -------------------- |
+| `GEMINI_API_KEY`   | ✅ Yes   | -        | Your API key            | Google AI API key    |
+| `THINKING_ENABLED` | ❌ No    | `false`  | `true`, `false`         | Enable thinking mode |
+| `THINKING_LEVEL`   | ❌ No    | `MEDIUM` | `LOW`, `MEDIUM`, `HIGH` | Reasoning depth      |
 
 ### Thinking Levels
 
