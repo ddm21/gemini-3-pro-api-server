@@ -1,11 +1,11 @@
 # Gemini 3.0 Pro API Server
 
-A FastAPI server that exposes Google's Gemini 3.0 Pro model as a REST API with support for flexible prompts, images (binary uploads or URLs), JSON schemas, and configurable thinking levels.
+A FastAPI server that exposes Google's Gemini 3.0 Pro model as a REST API with support for flexible prompts (text/file URLs), image URLs, JSON schemas, and configurable thinking levels.
 
 ## Features
 
 - ✅ Flexible prompts - Pass as text or load from URLs
-- ✅ Multiple image support - Binary uploads AND/OR image URLs
+- ✅ Multiple image support - Image URLs
 - ✅ Structured JSON output - Use schemas for guaranteed structure
 - ✅ Configurable thinking levels - LOW, MEDIUM, HIGH
 - ✅ Dynamic system prompts - Control AI behavior per request
@@ -24,6 +24,9 @@ pip install -r requirements.txt
 
 ```env
 GEMINI_API_KEY=your-api-key-here
+# OR
+GOOGLE_API_KEY=your-api-key-here
+
 THINKING_ENABLED=true
 THINKING_LEVEL=HIGH
 ```
@@ -64,24 +67,20 @@ docker run -p 8000:8000 \
 
 ### Endpoint: `POST /generate`
 
-**Content-Type:** `multipart/form-data`
+**Content-Type:** `application/json`
 
-### Required Parameters
+### Request Body Schema
 
-| Parameter     | Type   | Description               |
-| ------------- | ------ | ------------------------- |
-| `user_prompt` | string | Your prompt (text or URL) |
-
-### Optional Parameters
-
-| Parameter            | Type        | Default  | Description                  |
-| -------------------- | ----------- | -------- | ---------------------------- |
-| `user_prompt_type`   | string      | `"text"` | `"text"` or `"file"`         |
-| `system_prompt`      | string      | -        | System instructions          |
-| `system_prompt_type` | string      | `"text"` | `"text"` or `"file"`         |
-| `images`             | file[]      | -        | Binary image files           |
-| `image_urls`         | JSON string | -        | Array of image URLs          |
-| `json_schema`        | JSON string | -        | Schema for structured output |
+```json
+{
+  "user_prompt": "string (required)",
+  "user_prompt_type": "text" | "file" (optional, default: "text"),
+  "system_prompt": "string" (optional),
+  "system_prompt_type": "text" | "file" (optional, default: "text"),
+  "image_urls": ["url1", "url2"] (optional),
+  "json_schema": { ... } (optional)
+}
+```
 
 ### Response Format
 
@@ -102,56 +101,66 @@ docker run -p 8000:8000 \
 
 ```bash
 curl -X POST "http://localhost:8000/generate" \
-  -F "user_prompt=Write a haiku about coding"
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_prompt": "Write a haiku about coding"
+  }'
 ```
 
 ### 2. With System Prompt
 
 ```bash
 curl -X POST "http://localhost:8000/generate" \
-  -F "user_prompt=Explain quantum computing" \
-  -F "system_prompt=You are a physics professor teaching undergraduates. Use simple analogies."
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_prompt": "Explain quantum computing",
+    "system_prompt": "You are a physics professor teaching undergraduates. Use simple analogies."
+  }'
 ```
 
 ### 3. Load Prompts from URLs
 
 ```bash
 curl -X POST "http://localhost:8000/generate" \
-  -F "user_prompt=Create a landing page" \
-  -F "system_prompt=https://yourserver.com/prompts/system.txt" \
-  -F "system_prompt_type=file"
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_prompt": "https://yourserver.com/prompts/landing-page-task.txt",
+    "user_prompt_type": "file",
+    "system_prompt": "https://yourserver.com/prompts/system.txt",
+    "system_prompt_type": "file"
+  }'
 ```
 
-### 4. Upload Images (Binary)
+### 4. URL-Based Images
 
 ```bash
 curl -X POST "http://localhost:8000/generate" \
-  -F "user_prompt=Describe this image" \
-  -F "images=@screenshot.png"
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_prompt": "Analyze this landing page",
+    "image_urls": [
+      "https://example.com/screenshot1.png",
+      "https://example.com/screenshot2.png"
+    ]
+  }'
 ```
 
-### 5. Multiple Images (Mixed)
+### 5. Structured JSON Output
 
 ```bash
 curl -X POST "http://localhost:8000/generate" \
-  -F "user_prompt=Compare these designs" \
-  -F "images=@design1.png" \
-  -F 'image_urls=["https://example.com/design2.png"]'
-```
-
-### 6. Structured JSON Output
-
-```bash
-curl -X POST "http://localhost:8000/generate" \
-  -F "user_prompt=Extract product details from this image" \
-  -F "images=@product.jpg" \
-  -F 'json_schema={
-    "type": "object",
-    "required": ["name", "price"],
-    "properties": {
-      "name": {"type": "string"},
-      "price": {"type": "number"},
-      "description": {"type": "string"}
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_prompt": "Extract product details from this image",
+    "image_urls": ["https://example.com/product.jpg"],
+    "json_schema": {
+      "type": "object",
+      "required": ["name", "price"],
+      "properties": {
+        "name": {"type": "string"},
+        "price": {"type": "number"},
+        "description": {"type": "string"}
+      }
     }
   }'
 ```
@@ -171,40 +180,14 @@ curl -X POST "http://localhost:8000/generate" \
 }
 ```
 
-### 7. URL-Based Images Only
-
-```bash
-curl -X POST "http://localhost:8000/generate" \
-  -F "user_prompt=Analyze this landing page" \
-  -F 'image_urls=["https://example.com/screenshot1.png","https://example.com/screenshot2.png"]'
-```
-
-### 8. Everything Combined
-
-```bash
-curl -X POST "http://localhost:8000/generate" \
-  -F "user_prompt=https://storage.example.com/prompts/analysis-task.txt" \
-  -F "user_prompt_type=file" \
-  -F "system_prompt=https://storage.example.com/prompts/expert-system.txt" \
-  -F "system_prompt_type=file" \
-  -F "images=@image1.jpg" \
-  -F 'image_urls=["https://example.com/image2.png"]' \
-  -F 'json_schema={
-    "type": "object",
-    "properties": {
-      "analysis": {"type": "string"},
-      "recommendations": {"type": "array", "items": {"type": "string"}}
-    }
-  }'
-```
-
 ## Environment Variables
 
-| Variable           | Required | Default  | Options                 | Description          |
-| ------------------ | -------- | -------- | ----------------------- | -------------------- |
-| `GEMINI_API_KEY`   | ✅ Yes   | -        | Your API key            | Google AI API key    |
-| `THINKING_ENABLED` | ❌ No    | `false`  | `true`, `false`         | Enable thinking mode |
-| `THINKING_LEVEL`   | ❌ No    | `MEDIUM` | `LOW`, `MEDIUM`, `HIGH` | Reasoning depth      |
+| Variable           | Required | Default  | Options                 | Description                             |
+| ------------------ | -------- | -------- | ----------------------- | --------------------------------------- |
+| `GEMINI_API_KEY`   | ✅ Yes\* | -        | Your API key            | Google AI API key (\*or GOOGLE_API_KEY) |
+| `GOOGLE_API_KEY`   | ✅ Yes\* | -        | Your API key            | Alternative for GEMINI_API_KEY          |
+| `THINKING_ENABLED` | ❌ No    | `false`  | `true`, `false`         | Enable thinking mode                    |
+| `THINKING_LEVEL`   | ❌ No    | `MEDIUM` | `LOW`, `MEDIUM`, `HIGH` | Reasoning depth                         |
 
 ### Thinking Levels
 
@@ -235,7 +218,6 @@ curl -X POST "http://localhost:8000/generate" \
 ├── requirements.txt     # Python dependencies
 ├── Dockerfile           # Docker container configuration
 ├── .env                 # Environment variables (not in git)
-└── test_examples.py     # API usage examples
 ```
 
 ## Error Handling
@@ -267,9 +249,12 @@ Response:
 ```json
 {
   "status": "healthy",
+  "timestamp": "2024-03-20T10:00:00.123456",
+  "uptime_seconds": 123.45,
   "model": "gemini-3-pro-preview",
   "thinking_enabled": true,
-  "thinking_level": "HIGH"
+  "thinking_level": "HIGH",
+  "version": "3.0.0"
 }
 ```
 
