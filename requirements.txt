@@ -1,4 +1,6 @@
 fastapi
 uvicorn[standard]
 google-genai
-python-dotenv  # optional, if you want .env
+python-dotenv
+python-multipart
+requests

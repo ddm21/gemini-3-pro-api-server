@@ -1,142 +1,122 @@
-# Deploying to Easypanel
+# Deployment & Docker Guide
 
-This guide shows you how to deploy the Gemini 3.0 Pro API Server to Easypanel.
+## Docker Deployment
 
-## Prerequisites
-
-- Easypanel account
-- GitHub repository: https://github.com/ddm21/gemini-3-pro-api-server.git
-- Gemini API key from Google AI Studio
-
-## Deployment Steps
-
-### 1. Create New App in Easypanel
-
-1. Log in to your Easypanel dashboard
-2. Click **"Create App"**
-3. Choose **"GitHub"** as the source
-4. Select your repository: `ddm21/gemini-3-pro-api-server`
-5. Choose the `main` branch
-
-### 2. Configure Build Settings
-
-**Build Method:** Dockerfile
-
-The Dockerfile is already included in the repository, so Easypanel will automatically detect it.
-
-### 3. Set Environment Variables
-
-In the Easypanel app settings, add these environment variables:
-
-| Variable           | Value                      | Required                |
-| ------------------ | -------------------------- | ----------------------- |
-| `GEMINI_API_KEY`   | Your Gemini API key        | ✅ Yes                  |
-| `THINKING_ENABLED` | `true` or `false`          | ❌ No (default: false)  |
-| `THINKING_LEVEL`   | `LOW`, `MEDIUM`, or `HIGH` | ❌ No (default: MEDIUM) |
-
-**Example:**
-
-```
-GEMINI_API_KEY=AIzaSyC...your-key-here
-THINKING_ENABLED=true
-THINKING_LEVEL=HIGH
-```
-
-### 4. Configure Port
-
-**Port:** `8000`
-
-Easypanel will automatically map this port to a public URL.
-
-### 5. Deploy
-
-1. Click **"Deploy"**
-2. Wait for the build to complete (usually 1-2 minutes)
-3. Your API will be available at: `https://your-app-name.easypanel.host`
-
-## Testing Your Deployment
-
-Once deployed, test your API:
+### Building the Image
 
 ```bash
-curl -X POST "https://your-app-name.easypanel.host/generate" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Test prompt",
-    "json_schema": {
-      "type": "object",
-      "properties": {
-        "response": {"type": "string"}
-      }
-    }
-  }'
+docker build -t gemini-api .
 ```
 
-## Updating Your Deployment
+### Running the Container
 
-To update your deployment:
+**Basic (with API key only):**
 
-1. Push changes to your GitHub repository
-2. Easypanel will automatically rebuild and redeploy (if auto-deploy is enabled)
-3. Or manually trigger a rebuild in the Easypanel dashboard
+```bash
+docker run -p 8000:8000 -e GEMINI_API_KEY=your-api-key-here gemini-api
+```
 
-## Resource Requirements
+**With all options:**
 
-**Recommended:**
+```bash
+docker run -p 8000:8000 \
+  -e GEMINI_API_KEY=your-api-key-here \
+  -e THINKING_ENABLED=true \
+  -e THINKING_LEVEL=HIGH \
+  gemini-api
+```
 
-- **Memory:** 512MB - 1GB
-- **CPU:** 0.5 - 1 vCPU
+**With environment file:**
 
-The app is lightweight and doesn't require much resources.
+```bash
+docker run -p 8000:8000 --env-file .env gemini-api
+```
 
-## Monitoring
+### Docker Compose (Optional)
 
-Check logs in Easypanel dashboard:
+Create `docker-compose.yml`:
 
-- Look for: `[gemini-3-pro] mode=... thinking=... tokens=...`
-- Monitor token usage to track API costs
+```yaml
+version: "3.8"
 
-## Custom Domain (Optional)
+services:
+  gemini-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - THINKING_ENABLED=true
+      - THINKING_LEVEL=HIGH
+    restart: unless-stopped
+```
 
-1. Go to your app settings in Easypanel
-2. Click **"Domains"**
-3. Add your custom domain
-4. Update DNS records as instructed
+Run with:
 
-## Troubleshooting
+```bash
+docker-compose up -d
+```
 
-### Build Fails
+## Cloud Deployment
 
-- Check that Dockerfile is in the root directory
-- Verify requirements.txt is present
-- Check Easypanel build logs
+### Deploy to any platform that supports Docker:
 
-### API Returns 500 Error
+- **Google Cloud Run**
+- **AWS ECS/Fargate**
+- **Azure Container Instances**
+- **DigitalOcean App Platform**
+- **Railway**
+- **Render**
 
-- Verify `GEMINI_API_KEY` is set correctly
-- Check that `system-instructions.md` file exists
-- Review application logs in Easypanel
+### Example: Google Cloud Run
 
-### Slow Responses
+```bash
+# Build and push to Google Container Registry
+gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/gemini-api
 
-- Consider increasing `THINKING_LEVEL` to `LOW` for faster responses
-- Or disable thinking: `THINKING_ENABLED=false`
+# Deploy to Cloud Run
+gcloud run deploy gemini-api \
+  --image gcr.io/YOUR_PROJECT_ID/gemini-api \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars GEMINI_API_KEY=your-api-key-here,THINKING_ENABLED=true,THINKING_LEVEL=HIGH
+```
 
-## Security Notes
+## Files Included in Docker Image
 
-- ✅ `.env` file is excluded via `.gitignore`
-- ✅ API key is set via environment variables (not in code)
-- ⚠️ Consider adding authentication for production use
-- ⚠️ Monitor token usage to avoid unexpected costs
+The Dockerfile copies the following files:
 
-## Cost Considerations
+- `main.py` - FastAPI application entry point
+- `config.py` - Configuration management
+- `dependencies.py` - App lifecycle and dependencies
+- `models.py` - Data models
+- `routes/` - All route handlers (health, generate)
+- `utils/` - All utility modules (prompts, images, schema, tokens)
 
-- Easypanel hosting: ~$5-10/month (depending on plan)
-- Gemini API: Pay per token (check Google AI pricing)
-- Monitor usage in logs: `tokens=input/output/total`
+## Files Excluded (.dockerignore)
 
-## Support
+The following are automatically excluded:
 
-- Easypanel docs: https://easypanel.io/docs
-- GitHub repo: https://github.com/ddm21/gemini-3-pro-api-server
-- Gemini API docs: https://ai.google.dev/gemini-api/docs
+- `__pycache__/` and compiled Python files
+- `.env` and environment files (pass via `-e` flags instead)
+- Test files (`test_*.py`)
+- Documentation files (`.md`)
+- IDE and Git files
+
+## Health Check
+
+Once deployed, verify the service is running:
+
+```bash
+curl https://your-deployment-url.com/health
+```
+
+## Production Recommendations
+
+1. **Use secrets management** for `GEMINI_API_KEY` instead of environment variables
+2. **Enable rate limiting** if exposing publicly
+3. **Add authentication** (API keys, OAuth, etc.)
+4. **Monitor token usage** to control costs
+5. **Set up logging** and error tracking (Sentry, etc.)
+6. **Configure CORS** appropriately in `main.py` (currently set to allow all origins)
