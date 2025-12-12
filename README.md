@@ -183,7 +183,7 @@ curl -X POST "http://localhost:8000/generate" \
 | ------------------ | -------- | -------- | ----------------------- | -------------------- |
 | `GEMINI_API_KEY`   | ✅ Yes   | -        | Your API key            | Google AI API key    |
 | `THINKING_ENABLED` | ❌ No    | `false`  | `true`, `false`         | Enable thinking mode |
-| `THINKING_LEVEL`   | ❌ No    | `MEDIUM` | `LOW`, `MEDIUM`, `HIGH` | Reasoning depth      |
+| `THINKING_LEVEL`   | ❌ No    | `MEDIUM` | `LOW`, `HIGH` | Reasoning depth      |
 
 ### Thinking Levels
 
