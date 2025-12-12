@@ -1,122 +1,158 @@
 # Gemini 3.0 Pro API Server
 
-A FastAPI server that exposes Google's Gemini 3.0 Pro model as a REST API with support for structured JSON outputs via schemas, multiple image inputs, and configurable thinking levels.
+A FastAPI server that exposes Google's Gemini 3.0 Pro model as a REST API with support for flexible prompts, images (binary uploads or URLs), JSON schemas, and configurable thinking levels.
 
 ## Features
 
-- ✅ **Gemini 3.0 Pro** model with advanced reasoning
-- ✅ **JSON Schema support** - Structured output validation when needed
-- ✅ **Natural output** - AI decides format (JSON/Markdown/Text) based on context
-- ✅ **Multiple image support** - Send multiple screenshots/images in one request
-- ✅ **External system instructions** - Edit `system-instructions.md` without touching code
-- ✅ **Configurable thinking levels** - LOW, MEDIUM, HIGH
+- ✅ Flexible prompts - Pass as text or load from URLs
+- ✅ Multiple image support - Binary uploads AND/OR image URLs
+- ✅ Structured JSON output - Use schemas for guaranteed structure
+- ✅ Configurable thinking levels - LOW, MEDIUM, HIGH
+- ✅ Dynamic system prompts - Control AI behavior per request
 
 ## Quick Start
 
-### Installation
+### Local Setup
 
-1. Install dependencies:
+1. **Install dependencies:**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Create a `.env` file:
+2. **Create `.env` file:**
 
 ```env
-GEMINI_API_KEY='your-api-key-here'
+GEMINI_API_KEY=your-api-key-here
 THINKING_ENABLED=true
 THINKING_LEVEL=HIGH
 ```
 
-3. Run the server:
+3. **Run the server:**
 
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-### Customizing System Instructions
+Server will be available at `http://localhost:8000`
 
-Edit `system-instructions.md` to change the AI's role and behavior. Restart the server to apply changes.
+### Docker Setup
 
-## API Endpoint
+1. **Build the image:**
 
-### POST `/generate`
-
-Generate responses with optional structured JSON output.
-
-#### Request Body
-
-```json
-{
-  "prompt": "Your prompt here",
-  "json_schema": {},
-  "image_urls": ["https://example.com/image1.png"]
-}
+```bash
+docker build -t gemini-api .
 ```
 
-**Parameters:**
+2. **Run the container:**
 
-| Parameter     | Type   | Required | Description                                              |
-| ------------- | ------ | -------- | -------------------------------------------------------- |
-| `prompt`      | string | ✅ Yes   | User's prompt                                            |
-| `json_schema` | object | ❌ No    | JSON schema for structured output (enforces JSON format) |
-| `image_urls`  | array  | ❌ No    | List of image URLs to analyze                            |
-| `image_url`   | string | ❌ No    | Single image URL (backward compatible)                   |
+```bash
+docker run -p 8000:8000 -e GEMINI_API_KEY=your-api-key-here gemini-api
+```
 
-#### Response
+Or with all environment variables:
+
+```bash
+docker run -p 8000:8000 \
+  -e GEMINI_API_KEY=your-api-key-here \
+  -e THINKING_ENABLED=true \
+  -e THINKING_LEVEL=HIGH \
+  gemini-api
+```
+
+## API Usage
+
+### Endpoint: `POST /generate`
+
+**Content-Type:** `multipart/form-data`
+
+### Required Parameters
+
+| Parameter     | Type   | Description               |
+| ------------- | ------ | ------------------------- |
+| `user_prompt` | string | Your prompt (text or URL) |
+
+### Optional Parameters
+
+| Parameter            | Type        | Default  | Description                  |
+| -------------------- | ----------- | -------- | ---------------------------- |
+| `user_prompt_type`   | string      | `"text"` | `"text"` or `"file"`         |
+| `system_prompt`      | string      | -        | System instructions          |
+| `system_prompt_type` | string      | `"text"` | `"text"` or `"file"`         |
+| `images`             | file[]      | -        | Binary image files           |
+| `image_urls`         | JSON string | -        | Array of image URLs          |
+| `json_schema`        | JSON string | -        | Schema for structured output |
+
+### Response Format
 
 ```json
 {
-  "output": {},
+  "output": "...",
   "input_tokens": 1234,
   "output_tokens": 567,
   "total_tokens": 1801
 }
 ```
 
-**Note:** `output` can be a JSON object/array (when schema is provided or AI chooses JSON) or a string (markdown/text).
+**Note:** `output` is a string by default, or a JSON object/array when `json_schema` is provided.
 
-## Usage Examples
+## CURL Examples
 
-### 1. Natural Output (AI Decides Format)
-
-The AI will choose the best format based on your prompt and system instructions.
+### 1. Simple Text Generation
 
 ```bash
 curl -X POST "http://localhost:8000/generate" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Write a review of this landing page",
-    "image_urls": ["https://example.com/screenshot.png"]
-  }'
+  -F "user_prompt=Write a haiku about coding"
 ```
 
-**Response might be:**
-
-- JSON if system instructions suggest structured data
-- Markdown if writing a blog post
-- Plain text for simple descriptions
-
-### 2. Structured JSON with Schema
-
-Enforce specific JSON structure with validation.
+### 2. With System Prompt
 
 ```bash
 curl -X POST "http://localhost:8000/generate" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Extract hero section details",
-    "json_schema": {
-      "type": "object",
-      "required": ["headline", "cta"],
-      "properties": {
-        "headline": {"type": "string"},
-        "subheadline": {"type": "string"},
-        "cta_text": {"type": "string"}
-      }
-    },
-    "image_urls": ["https://example.com/hero.png"]
+  -F "user_prompt=Explain quantum computing" \
+  -F "system_prompt=You are a physics professor teaching undergraduates. Use simple analogies."
+```
+
+### 3. Load Prompts from URLs
+
+```bash
+curl -X POST "http://localhost:8000/generate" \
+  -F "user_prompt=Create a landing page" \
+  -F "system_prompt=https://yourserver.com/prompts/system.txt" \
+  -F "system_prompt_type=file"
+```
+
+### 4. Upload Images (Binary)
+
+```bash
+curl -X POST "http://localhost:8000/generate" \
+  -F "user_prompt=Describe this image" \
+  -F "images=@screenshot.png"
+```
+
+### 5. Multiple Images (Mixed)
+
+```bash
+curl -X POST "http://localhost:8000/generate" \
+  -F "user_prompt=Compare these designs" \
+  -F "images=@design1.png" \
+  -F 'image_urls=["https://example.com/design2.png"]'
+```
+
+### 6. Structured JSON Output
+
+```bash
+curl -X POST "http://localhost:8000/generate" \
+  -F "user_prompt=Extract product details from this image" \
+  -F "images=@product.jpg" \
+  -F 'json_schema={
+    "type": "object",
+    "required": ["name", "price"],
+    "properties": {
+      "name": {"type": "string"},
+      "price": {"type": "number"},
+      "description": {"type": "string"}
+    }
   }'
 ```
 
@@ -125,151 +161,115 @@ curl -X POST "http://localhost:8000/generate" \
 ```json
 {
   "output": {
-    "headline": "Build faster",
-    "subheadline": "Ship in days, not weeks",
-    "cta_text": "Get Started"
+    "name": "Premium Headphones",
+    "price": 299.99,
+    "description": "Noise-cancelling wireless headphones"
   },
-  "input_tokens": 1234,
-  "output_tokens": 56,
-  "total_tokens": 1290
+  "input_tokens": 1523,
+  "output_tokens": 45,
+  "total_tokens": 1568
 }
 ```
 
-### 3. Multiple Images
+### 7. URL-Based Images Only
 
 ```bash
 curl -X POST "http://localhost:8000/generate" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Compare desktop and mobile versions",
-    "image_urls": [
-      "https://example.com/desktop.png",
-      "https://example.com/mobile.png"
-    ]
-  }'
+  -F "user_prompt=Analyze this landing page" \
+  -F 'image_urls=["https://example.com/screenshot1.png","https://example.com/screenshot2.png"]'
 ```
 
-### 4. Complex Schema Example
+### 8. Everything Combined
 
 ```bash
 curl -X POST "http://localhost:8000/generate" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Extract all pricing tiers",
-    "json_schema": {
-      "type": "object",
-      "required": ["tiers"],
-      "properties": {
-        "tiers": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["name", "price"],
-            "properties": {
-              "name": {"type": "string"},
-              "price": {"type": "number"},
-              "features": {
-                "type": "array",
-                "items": {"type": "string"}
-              }
-            }
-          }
-        }
-      }
-    },
-    "image_urls": ["https://example.com/pricing.png"]
+  -F "user_prompt=https://storage.example.com/prompts/analysis-task.txt" \
+  -F "user_prompt_type=file" \
+  -F "system_prompt=https://storage.example.com/prompts/expert-system.txt" \
+  -F "system_prompt_type=file" \
+  -F "images=@image1.jpg" \
+  -F 'image_urls=["https://example.com/image2.png"]' \
+  -F 'json_schema={
+    "type": "object",
+    "properties": {
+      "analysis": {"type": "string"},
+      "recommendations": {"type": "array", "items": {"type": "string"}}
+    }
   }'
 ```
-
-## How It Works
-
-### Without JSON Schema
-
-- AI outputs in whatever format makes sense
-- System instructions guide the format
-- Could be JSON, Markdown, or plain text
-- Response parsing attempts JSON first, falls back to raw text
-
-### With JSON Schema
-
-- Forces `application/json` MIME type
-- Validates output against schema
-- Guarantees structured data
-- Returns parsed JSON object/array
 
 ## Environment Variables
 
-| Variable           | Default  | Options                 | Description                  |
-| ------------------ | -------- | ----------------------- | ---------------------------- |
-| `GEMINI_API_KEY`   | -        | Your API key            | Required: Google AI API key  |
-| `THINKING_ENABLED` | `false`  | `true`, `false`         | Enable/disable thinking mode |
-| `THINKING_LEVEL`   | `MEDIUM` | `LOW`, `MEDIUM`, `HIGH` | Reasoning depth              |
-
-## Configuration
+| Variable           | Required | Default  | Options                 | Description          |
+| ------------------ | -------- | -------- | ----------------------- | -------------------- |
+| `GEMINI_API_KEY`   | ✅ Yes   | -        | Your API key            | Google AI API key    |
+| `THINKING_ENABLED` | ❌ No    | `false`  | `true`, `false`         | Enable thinking mode |
+| `THINKING_LEVEL`   | ❌ No    | `MEDIUM` | `LOW`, `MEDIUM`, `HIGH` | Reasoning depth      |
 
 ### Thinking Levels
 
-- **LOW** - Fast responses, minimal reasoning
-- **MEDIUM** - Balanced speed and quality (default)
-- **HIGH** - Maximum reasoning capability, slower but more thorough
+- **LOW** - Fast responses, basic reasoning
+- **MEDIUM** - Balanced speed and quality (recommended)
+- **HIGH** - Maximum reasoning, slower but more thorough
 
-### Model Parameters
+## Project Structure
 
-- **Model**: `gemini-3-pro-preview`
-- **Temperature**: `0.6`
-- **Top-p**: `0.4`
-- **Max output tokens**: `12000`
-- **Media resolution**: `MEDIUM`
-
-## Use Cases
-
-### 1. Flexible Content Generation
-
-Let the AI choose the best format for blog posts, reviews, or descriptions.
-
-### 2. Structured Data Extraction
-
-Use JSON schemas to extract specific fields from images with guaranteed structure.
-
-### 3. Multi-Image Analysis
-
-Compare desktop vs mobile, or analyze multiple page sections.
-
-### 4. Template Customization
-
-The default system instructions are optimized for landing page analysis and template customization.
+```
+.
+├── main.py              # FastAPI application entry point
+├── app/                 # Main application package
+│   ├── __init__.py      # Package initialization
+│   ├── config.py        # Configuration and environment variables
+│   ├── dependencies.py  # App dependencies and lifecycle
+│   ├── models.py        # Pydantic data models
+│   ├── routes/          # API endpoints
+│   │   ├── __init__.py
+│   │   ├── health.py    # Health check endpoint
+│   │   └── generate.py  # Main generation endpoint
+│   └── utils/           # Utility modules
+│       ├── __init__.py
+│       ├── prompts.py   # Prompt handling utilities
+│       ├── images.py    # Image processing utilities
+│       ├── schema.py    # JSON schema conversion
+│       └── tokens.py    # Token counting utilities
+├── requirements.txt     # Python dependencies
+├── Dockerfile           # Docker container configuration
+├── .env                 # Environment variables (not in git)
+└── test_examples.py     # API usage examples
+```
 
 ## Error Handling
 
-The API returns appropriate HTTP status codes:
+The API returns standard HTTP status codes:
 
 - `200` - Success
-- `400` - Bad request (invalid image URL, etc.)
-- `500` - Server error (model failure, invalid response, etc.)
+- `400` - Bad request (invalid parameters, failed URL fetch)
+- `500` - Server error (model failure, API issues)
 
-## Token Usage
-
-Monitor token consumption in server logs:
-
-```
-[gemini-3-pro] mode=with_schema thinking=True level=HIGH tokens=2341/567/2908
-[gemini-3-pro] mode=natural thinking=True level=HIGH tokens=1234/890/2124
-```
-
-## JSON Schema Format
-
-Schemas follow standard JSON Schema format and are automatically converted to Gemini's `types.Schema` format:
+Error response format:
 
 ```json
 {
-  "type": "object|array|string|number|boolean",
-  "required": ["field1", "field2"],
-  "properties": {
-    "field1": {"type": "string"},
-    "field2": {"type": "number"}
-  },
-  "items": {...},
-  "description": "Optional description"
+  "detail": "Error message here"
+}
+```
+
+## Health Check
+
+Check if the server is running:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Response:
+
+```json
+{
+  "status": "healthy",
+  "model": "gemini-3-pro-preview",
+  "thinking_enabled": true,
+  "thinking_level": "HIGH"
 }
 ```
 
@@ -279,4 +279,7 @@ MIT
 
 ## Support
 
-For issues or questions, check the [Google AI documentation](https://ai.google.dev/gemini-api/docs).
+For API documentation and more details, visit:
+
+- [Google AI Gemini API Docs](https://ai.google.dev/gemini-api/docs)
+- Interactive API docs: `http://localhost:8000/docs`
