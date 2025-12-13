@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException
 
 from google.genai import types
 
-from app.config import MODEL_NAME, THINKING_ENABLED, THINKING_LEVEL, MAX_PROMPT_SIZE
+from app.config import MODEL_NAME, MAX_PROMPT_SIZE
 from app.models import GenerateRequest, GenerateResponse
 from app.dependencies import get_gemini_client
 from app.utils import (
@@ -27,13 +27,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Generation"])
 
 
-def build_thinking_config() -> dict:
+def build_thinking_config(thinking_level: str) -> dict:
     """Build thinking config for Gemini 3.0 Pro.
     
+    Args:
+        thinking_level: Thinking level (LOW or HIGH)
+        
     Returns:
-        dict: Configuration with thinkingLevel (LOW, MEDIUM, or HIGH)
+        dict: Configuration with thinkingLevel
     """
-    return {"thinkingLevel": THINKING_LEVEL if THINKING_ENABLED else "LOW"}
+    # Validate thinking level (only LOW or HIGH are valid)
+    valid_levels = ["LOW", "HIGH"]
+    level = thinking_level.upper()
+    if level not in valid_levels:
+        logger.warning(f"Invalid thinking_level '{thinking_level}', defaulting to HIGH")
+        level = "HIGH"
+    
+    return {"thinkingLevel": level}
 
 
 @router.post("/generate", response_model=GenerateResponse)
@@ -88,13 +98,21 @@ async def generate(request: GenerateRequest):
         # 5. Build request
         contents = [types.Content(role="user", parts=parts)]
         
-        # 6. Build config
+        # 6. Build config with request parameters
+        # Validate and transform media_resolution
+        valid_resolutions = ["LOW", "MEDIUM", "HIGH"]
+        resolution = request.media_resolution.upper()
+        if resolution not in valid_resolutions:
+            logger.warning(f"Invalid media_resolution '{request.media_resolution}', defaulting to MEDIUM")
+            resolution = "MEDIUM"
+        media_res_full = f"MEDIA_RESOLUTION_{resolution}"
+        
         config_params = {
             "temperature": 0.6,
             "top_p": 0.4,
             "max_output_tokens": 12000,
-            "thinkingConfig": build_thinking_config(),
-            "media_resolution": "MEDIA_RESOLUTION_MEDIUM",
+            "thinkingConfig": build_thinking_config(request.thinking_level),
+            "media_resolution": media_res_full,
         }
         
         # Add system instruction if provided
@@ -153,7 +171,8 @@ async def generate(request: GenerateRequest):
         has_schema = "structured" if request.json_schema else "natural"
         logger.info(
             f"[gemini-3-pro] mode={has_schema} "
-            f"thinking={THINKING_ENABLED} level={THINKING_LEVEL if THINKING_ENABLED else 'LOW'} "
+            f"thinking_level={request.thinking_level.upper()} "
+            f"media_res={resolution} "
             f"tokens={input_tokens}/{output_tokens}/{total_tokens}"
         )
         

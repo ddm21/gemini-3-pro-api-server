@@ -12,7 +12,7 @@ import requests
 from fastapi import FastAPI
 from google import genai
 
-from app.config import API_KEY, MODEL_NAME, THINKING_ENABLED, THINKING_LEVEL
+from app.config import API_KEY, MODEL_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
     # Initialize Gemini client
     client = genai.Client(api_key=API_KEY)
     logger.info(f"Gemini client initialized with model: {MODEL_NAME}")
-    logger.info(f"Thinking mode: {'ENABLED' if THINKING_ENABLED else 'DISABLED'} (Level: {THINKING_LEVEL if THINKING_ENABLED else 'LOW'})")
+    logger.info("Thinking mode: ENABLED by default (Gemini 3.0 Pro) - Level configurable per request")
     
     yield
     

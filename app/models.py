@@ -14,6 +14,8 @@ class GenerateRequest(BaseModel):
     system_prompt_type: str = Field("text", description="Type of system_prompt: 'text' or 'file'")
     image_urls: list[str] | None = Field(None, description="List of image URLs")
     json_schema: dict | None = Field(None, description="JSON schema for structured output")
+    thinking_level: str = Field("HIGH", description="Thinking level: 'LOW' or 'HIGH'")
+    media_resolution: str = Field("MEDIUM", description="Media resolution: 'LOW', 'MEDIUM', or 'HIGH'")
 
 
 class GenerateResponse(BaseModel):
@@ -30,6 +32,4 @@ class HealthResponse(BaseModel):
     timestamp: str = Field(..., description="Current server timestamp")
     uptime_seconds: float = Field(..., description="Server uptime in seconds")
     model: str = Field(..., description="Model name")
-    thinking_enabled: bool = Field(..., description="Whether thinking mode is enabled")
-    thinking_level: str = Field(..., description="Thinking level configuration")
     version: str = Field(..., description="API version")

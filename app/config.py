@@ -20,15 +20,6 @@ if not API_KEY:
     raise RuntimeError("GEMINI_API_KEY or GOOGLE_API_KEY not set in env or .env")
 
 # ============================================================================
-# THINKING CONFIGURATION
-# ============================================================================
-
-THINKING_ENABLED = os.getenv("THINKING_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
-THINKING_LEVEL = os.getenv("THINKING_LEVEL", "MEDIUM").upper()
-if THINKING_LEVEL not in ["LOW", "MEDIUM", "HIGH"]:
-    THINKING_LEVEL = "MEDIUM"
-
-# ============================================================================
 # MODEL CONFIGURATION
 # ============================================================================
 

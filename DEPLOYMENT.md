@@ -16,16 +16,6 @@ docker build -t gemini-api .
 docker run -p 8000:8000 -e GEMINI_API_KEY=your-api-key-here gemini-api
 ```
 
-**With all options:**
-
-```bash
-docker run -p 8000:8000 \
-  -e GEMINI_API_KEY=your-api-key-here \
-  -e THINKING_ENABLED=true \
-  -e THINKING_LEVEL=HIGH \
-  gemini-api
-```
-
 **With environment file:**
 
 ```bash
@@ -46,8 +36,6 @@ services:
       - "8000:8000"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - THINKING_ENABLED=true
-      - THINKING_LEVEL=HIGH
     restart: unless-stopped
 ```
 
@@ -80,7 +68,7 @@ gcloud run deploy gemini-api \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --set-env-vars GEMINI_API_KEY=your-api-key-here,THINKING_ENABLED=true,THINKING_LEVEL=HIGH
+  --set-env-vars GEMINI_API_KEY=your-api-key-here
 ```
 
 ## Files Included in Docker Image

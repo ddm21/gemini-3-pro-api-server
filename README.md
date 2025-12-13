@@ -1,13 +1,14 @@
 # Gemini 3.0 Pro API Server
 
-A FastAPI server that exposes Google's Gemini 3.0 Pro model as a REST API with support for flexible prompts (text/file URLs), image URLs, JSON schemas, and configurable thinking levels.
+A FastAPI server that exposes Google's Gemini 3.0 Pro model as a REST API with support for flexible prompts (text/file URLs), image URLs, JSON schemas, and per-request configurable thinking levels and media resolution.
 
 ## Features
 
 - ✅ Flexible prompts - Pass as text or load from URLs
 - ✅ Multiple image support - Image URLs
 - ✅ Structured JSON output - Use schemas for guaranteed structure
-- ✅ Configurable thinking levels - LOW, MEDIUM, HIGH
+- ✅ Configurable thinking levels - LOW or HIGH (per request)
+- ✅ Configurable media resolution - LOW, MEDIUM, or HIGH (per request)
 - ✅ Dynamic system prompts - Control AI behavior per request
 
 ## Quick Start
@@ -45,8 +46,6 @@ pip install -r requirements.txt
 
 ```env
 GEMINI_API_KEY=your-api-key-here
-THINKING_ENABLED=true
-THINKING_LEVEL=HIGH
 ```
 
 3. **Run the server:**
@@ -71,15 +70,7 @@ docker build -t gemini-api .
 docker run -p 8000:8000 -e GEMINI_API_KEY=your-api-key-here gemini-api
 ```
 
-Or with all environment variables:
 
-```bash
-docker run -p 8000:8000 \
-  -e GEMINI_API_KEY=your-api-key-here \
-  -e THINKING_ENABLED=true \
-  -e THINKING_LEVEL=HIGH \
-  gemini-api
-```
 
 ## API Usage
 
@@ -96,7 +87,9 @@ docker run -p 8000:8000 \
   "system_prompt": "string" (optional),
   "system_prompt_type": "text" | "file" (optional, default: "text"),
   "image_urls": ["url1", "url2"] (optional),
-  "json_schema": { ... } (optional)
+  "json_schema": { ... } (optional),
+  "thinking_level": "LOW" | "HIGH" (optional, default: "HIGH"),
+  "media_resolution": "LOW" | "MEDIUM" | "HIGH" (optional, default: "MEDIUM")
 }
 ```
 
@@ -163,7 +156,20 @@ curl -X POST "http://localhost:8000/generate" \
   }'
 ```
 
-### 5. Structured JSON Output
+### 5. With Thinking Level and Media Resolution
+
+```bash
+curl -X POST "http://localhost:8000/generate" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_prompt": "Analyze this product image in detail",
+    "image_urls": ["https://example.com/product.jpg"],
+    "thinking_level": "HIGH",
+    "media_resolution": "HIGH"
+  }'
+```
+
+### 6. Structured JSON Output
 
 ```bash
 curl -X POST "http://localhost:8000/generate" \
@@ -200,17 +206,26 @@ curl -X POST "http://localhost:8000/generate" \
 
 ## Environment Variables
 
-| Variable           | Required | Default  | Options                 | Description          |
-| ------------------ | -------- | -------- | ----------------------- | -------------------- |
-| `GEMINI_API_KEY`   | ✅ Yes   | -        | Your API key            | Google AI API key    |
-| `THINKING_ENABLED` | ❌ No    | `false`  | `true`, `false`         | Enable thinking mode |
-| `THINKING_LEVEL`   | ❌ No    | `MEDIUM` | `LOW`, `HIGH` | Reasoning depth      |
+| Variable           | Required | Default  | Description          |
+| ------------------ | -------- | -------- | -------------------- |
+| `GEMINI_API_KEY`   | ✅ Yes   | -        | Google AI API key    |
 
-### Thinking Levels
+## Request Parameters
+
+### Thinking Level (`thinking_level`)
+
+**Optional** - Controls the depth of reasoning (default: `HIGH`)
 
 - **LOW** - Fast responses, basic reasoning
-- **MEDIUM** - Balanced speed and quality (recommended)
 - **HIGH** - Maximum reasoning, slower but more thorough
+
+### Media Resolution (`media_resolution`)
+
+**Optional** - Controls image/video processing quality (default: `MEDIUM`)
+
+- **LOW** - Faster processing, lower detail
+- **MEDIUM** - Balanced quality and speed (recommended)
+- **HIGH** - Maximum detail, slower processing
 
 ## Project Structure
 
@@ -269,8 +284,6 @@ Response:
   "timestamp": "2024-03-20T10:00:00.123456",
   "uptime_seconds": 123.45,
   "model": "gemini-3-pro-preview",
-  "thinking_enabled": true,
-  "thinking_level": "HIGH",
   "version": "3.0.0"
 }
 ```

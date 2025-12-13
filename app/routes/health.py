@@ -9,7 +9,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.config import MODEL_NAME, THINKING_ENABLED, THINKING_LEVEL
+from app.config import MODEL_NAME
 from app.models import HealthResponse
 from app.dependencies import get_app_start_time
 
@@ -30,8 +30,6 @@ def health_check():
             timestamp=datetime.now().isoformat(),
             uptime_seconds=uptime,
             model=MODEL_NAME,
-            thinking_enabled=THINKING_ENABLED,
-            thinking_level=THINKING_LEVEL if THINKING_ENABLED else "LOW",
             version="3.0.0"
         )
     except Exception as e:
