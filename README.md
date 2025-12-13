@@ -14,6 +14,27 @@ A FastAPI server that exposes Google's Gemini 3.0 Pro model as a REST API with s
 
 ### Local Setup
 
+#### Create a virtual environment and Install dependencies from requirements.txt
+**On Linux/macOS**
+```
+source gemini-pro-3/bin/activate && gemini-pro-3\Scripts\activate.bat
+```
+
+**On Windows**
+```
+python3 -m venv gemini-pro-3 && gemini-pro-3\Scripts\activate.bat
+```
+
+**Install requirements**
+```
+pip install -r requirements.txt
+```
+
+**Deactivate the environment (when finished)**
+```
+deactivate
+```
+
 1. **Install dependencies:**
 
 ```bash
