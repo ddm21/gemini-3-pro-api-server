@@ -23,7 +23,10 @@ ENV/
 .gitignore
 
 # Testing
+tests/
+.pytest_cache/
 test_*.py
+*.coverage
 
 # Documentation
 *.md
