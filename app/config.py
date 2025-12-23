@@ -47,7 +47,7 @@ REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "15"))
 # MODEL CONFIGURATION
 # ============================================================================
 
-MODEL_NAME = "gemini-3-pro-preview"
+MODEL_NAME = "gemini-3-flash-preview"
 
 # Supported models
 SUPPORTED_MODELS = [
