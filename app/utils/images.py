@@ -9,8 +9,9 @@ import mimetypes
 import requests
 from fastapi import HTTPException, UploadFile
 
-from app.config import MAX_IMAGE_SIZE
+from app.config import MAX_IMAGE_SIZE, REQUEST_TIMEOUT
 from app.dependencies import get_http_session
+from app.security import validate_url
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +28,12 @@ def load_image_from_url(url: str) -> tuple[bytes, str]:
     Raises:
         HTTPException: If image download fails or exceeds size limit
     """
+    # Validate URL to prevent SSRF
+    validate_url(url)
+    
     try:
         http_session = get_http_session()
-        response = http_session.get(url, timeout=15, stream=True)
+        response = http_session.get(url, timeout=REQUEST_TIMEOUT, stream=True)
         response.raise_for_status()
         
         # Check content length
