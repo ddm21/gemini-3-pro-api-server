@@ -20,13 +20,27 @@ router = APIRouter(tags=["Health"])
 
 @router.get("/health", response_model=HealthResponse)
 def health_check():
-    """Health check endpoint to verify API is running."""
+    """Health check endpoint to verify API is running and Gemini API is accessible."""
     try:
         app_start_time = get_app_start_time()
         uptime = (datetime.now() - app_start_time).total_seconds()
         
+        # Test Gemini API connectivity
+        api_status = "healthy"
+        try:
+            from app.dependencies import get_gemini_client
+            client = get_gemini_client()
+            # Lightweight test - just verify client is initialized
+            # Actual API call would be too expensive for health check
+            if client is None:
+                api_status = "degraded"
+                logger.warning("Gemini client not initialized")
+        except Exception as e:
+            api_status = "degraded"
+            logger.warning(f"Gemini API connectivity issue: {e}")
+        
         return HealthResponse(
-            status="healthy",
+            status=api_status,
             timestamp=datetime.now().isoformat(),
             uptime_seconds=uptime,
             model=MODEL_NAME,

@@ -8,8 +8,9 @@ import logging
 import requests
 from fastapi import HTTPException
 
-from app.config import MAX_PROMPT_SIZE
+from app.config import MAX_PROMPT_SIZE, REQUEST_TIMEOUT
 from app.dependencies import get_http_session
+from app.security import validate_url
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +38,14 @@ def load_content_from_source(content: str, content_type: str, max_size: int = MA
         return content
     
     elif content_type == "file":
+        # Validate URL to prevent SSRF
+        validate_url(content)
+        
         try:
             http_session = get_http_session()
             
             # Stream the response to check size before loading
-            response = http_session.get(content, timeout=15, stream=True)
+            response = http_session.get(content, timeout=REQUEST_TIMEOUT, stream=True)
             response.raise_for_status()
             
             # Check content length
