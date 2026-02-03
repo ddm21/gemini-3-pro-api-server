@@ -94,6 +94,25 @@ class GenerateRequest(BaseModel):
         return v
 
 
+class CodeExecutionMetadata(BaseModel):
+    """Metadata about code execution during generation."""
+    executed: bool = Field(
+        description="Whether code was executed during generation"
+    )
+    code_snippets: list[str] | None = Field(
+        None,
+        description="Python code snippets generated and executed"
+    )
+    execution_results: list[str] | None = Field(
+        None,
+        description="Results/output from code execution"
+    )
+    execution_count: int = Field(
+        0,
+        description="Number of code executions performed"
+    )
+
+
 class GenerateResponse(BaseModel):
     """Response model for /generate endpoint."""
     output: Union[dict, list, str]
@@ -103,6 +122,10 @@ class GenerateResponse(BaseModel):
     warning: str | None = Field(
         None,
         description="Warning message if configuration is suboptimal"
+    )
+    code_execution_metadata: CodeExecutionMetadata | None = Field(
+        None,
+        description="Metadata about code execution (only present when enable_code_execution=true)"
     )
 
 

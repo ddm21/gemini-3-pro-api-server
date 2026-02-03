@@ -40,6 +40,23 @@ def test_code_execution_with_high_thinking():
     result = response.json()
     print(f"Response: {json.dumps(result, indent=2)}")
     
+    # Verify code execution metadata is present
+    if "code_execution_metadata" in result:
+        metadata = result["code_execution_metadata"]
+        print(f"\n✅ Code execution metadata present:")
+        print(f"   - Executed: {metadata.get('executed')}")
+        print(f"   - Execution count: {metadata.get('execution_count')}")
+        if metadata.get('code_snippets'):
+            print(f"   - Code snippets: {len(metadata['code_snippets'])} snippet(s)")
+            for i, snippet in enumerate(metadata['code_snippets'], 1):
+                print(f"     Snippet {i}: {snippet[:80]}...")
+        if metadata.get('execution_results'):
+            print(f"   - Results: {len(metadata['execution_results'])} result(s)")
+            for i, result_text in enumerate(metadata['execution_results'], 1):
+                print(f"     Result {i}: {result_text[:80]}...")
+    else:
+        print("\n⚠️  No code execution metadata (model may not have used code execution)")
+    
     if "warning" in result:
         print(f"⚠️  WARNING PRESENT: {result['warning']}")
     else:
@@ -72,6 +89,15 @@ def test_code_execution_with_low_thinking():
     print(f"Status Code: {response.status_code}")
     result = response.json()
     print(f"Response: {json.dumps(result, indent=2)}")
+    
+    # Verify code execution metadata is present
+    if "code_execution_metadata" in result:
+        metadata = result["code_execution_metadata"]
+        print(f"\n✅ Code execution metadata present:")
+        print(f"   - Executed: {metadata.get('executed')}")
+        print(f"   - Execution count: {metadata.get('execution_count')}")
+    else:
+        print("\n⚠️  No code execution metadata")
     
     if "warning" in result:
         print(f"⚠️  WARNING PRESENT (expected): {result['warning']}")

@@ -103,6 +103,54 @@ def validate_code_execution_config(enable_code_execution: bool, thinking_level: 
     return {}
 
 
+def extract_code_execution_metadata(response):
+    """Extract code execution details from Gemini API response.
+    
+    Args:
+        response: Gemini API response object
+        
+    Returns:
+        CodeExecutionMetadata if code was executed, None otherwise
+    """
+    from app.models import CodeExecutionMetadata
+    
+    if not hasattr(response, 'candidates') or not response.candidates:
+        return CodeExecutionMetadata(executed=False, execution_count=0)
+    
+    code_snippets = []
+    execution_results = []
+    
+    for candidate in response.candidates:
+        if not hasattr(candidate, 'content') or not candidate.content:
+            continue
+            
+        parts = candidate.content.parts if hasattr(candidate.content, 'parts') else []
+        
+        for part in parts:
+            # Check for executable code
+            if hasattr(part, 'executable_code') and part.executable_code:
+                code = part.executable_code.code if hasattr(part.executable_code, 'code') else str(part.executable_code)
+                code_snippets.append(code)
+                logger.info(f"Code executed: {code[:100]}...")
+            
+            # Check for execution results
+            if hasattr(part, 'code_execution_result') and part.code_execution_result:
+                result_output = part.code_execution_result.output if hasattr(part.code_execution_result, 'output') else str(part.code_execution_result)
+                execution_results.append(result_output)
+                logger.info(f"Execution result: {result_output[:100]}...")
+    
+    # Only return metadata if code was actually executed
+    if code_snippets or execution_results:
+        return CodeExecutionMetadata(
+            executed=True,
+            code_snippets=code_snippets if code_snippets else None,
+            execution_results=execution_results if execution_results else None,
+            execution_count=len(code_snippets)
+        )
+    
+    return CodeExecutionMetadata(executed=False, execution_count=0)
+
+
 @router.post("/generate", response_model=GenerateResponse)
 @limiter.limit(RATE_LIMIT)
 async def generate(
@@ -253,18 +301,34 @@ async def generate(
             getattr(response, "usage_metadata", None)
         )
         
+        # 11.5. Extract code execution metadata if enabled
+        code_exec_metadata = None
+        if data.enable_code_execution:
+            code_exec_metadata = extract_code_execution_metadata(response)
+            if code_exec_metadata and code_exec_metadata.executed:
+                logger.info(
+                    f"Code execution performed: {code_exec_metadata.execution_count} "
+                    f"snippet(s) executed"
+                )
+        
         # 12. Log usage
         has_schema = "structured" if data.json_schema else "natural"
         model_short = selected_model.replace("-preview", "").replace("gemini-", "")
         code_exec_status = "code_exec=ON" if data.enable_code_execution else "code_exec=OFF"
+        
+        # Add execution count to logs if code was executed
+        exec_count_str = ""
+        if code_exec_metadata and code_exec_metadata.executed:
+            exec_count_str = f" executions={code_exec_metadata.execution_count}"
+        
         logger.info(
-            f"[{model_short}] mode={has_schema} {code_exec_status} "
+            f"[{model_short}] mode={has_schema} {code_exec_status}{exec_count_str} "
             f"thinking_level={data.thinking_level} "
             f"media_res={resolution} "
             f"tokens={input_tokens}/{output_tokens}/{total_tokens}"
         )
         
-        # 13. Build response with optional warning
+        # 13. Build response with optional warning and code execution metadata
         response_data = {
             "output": parsed_output,
             "input_tokens": input_tokens,
@@ -275,6 +339,10 @@ async def generate(
         # Add warning if code execution validation failed
         if validation_result:
             response_data["warning"] = validation_result["warning"]
+        
+        # Add code execution metadata if available
+        if code_exec_metadata:
+            response_data["code_execution_metadata"] = code_exec_metadata
         
         return GenerateResponse(**response_data)
         
