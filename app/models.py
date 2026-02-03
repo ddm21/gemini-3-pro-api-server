@@ -62,6 +62,10 @@ class GenerateRequest(BaseModel):
         MediaResolution.MEDIUM, 
         description="Media resolution: 'LOW', 'MEDIUM', or 'HIGH'"
     )
+    enable_code_execution: bool = Field(
+        False,
+        description="Enable code execution tool for high-resolution image analysis (recommended with HIGH thinking level)"
+    )
     
     @field_validator('user_prompt')
     @classmethod
@@ -96,6 +100,10 @@ class GenerateResponse(BaseModel):
     input_tokens: int
     output_tokens: int
     total_tokens: int
+    warning: str | None = Field(
+        None,
+        description="Warning message if configuration is suboptimal"
+    )
 
 
 class HealthResponse(BaseModel):
