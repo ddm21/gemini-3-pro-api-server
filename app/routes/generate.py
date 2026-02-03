@@ -199,6 +199,11 @@ async def generate(
             config_params["response_schema"] = convert_dict_to_schema(data.json_schema)
             logger.info("Using structured JSON output with schema")
         
+        # Add code execution tool if enabled (must be in config)
+        if data.enable_code_execution:
+            config_params["tools"] = [types.Tool(code_execution=types.ToolCodeExecution())]
+            logger.info("Code execution tool enabled for high-resolution image analysis")
+        
         config = types.GenerateContentConfig(**config_params)
         
         # 7.5. Validate code execution configuration
@@ -207,26 +212,15 @@ async def generate(
             data.thinking_level
         )
         
-        # 7.6. Add code execution tool if enabled
-        tools = None
-        if data.enable_code_execution:
-            tools = [types.Tool(code_execution=types.ToolCodeExecution())]
-            logger.info("Code execution tool enabled for high-resolution image analysis")
-        
         # 8. Generate content
         client = get_gemini_client()
         logger.info(f"Generating content with model: {selected_model}")
         
-        # Build generate_content arguments
-        generate_args = {
-            "model": selected_model,
-            "contents": contents,
-            "config": config,
-        }
-        if tools:
-            generate_args["tools"] = tools
-        
-        response = client.models.generate_content(**generate_args)
+        response = client.models.generate_content(
+            model=selected_model,
+            contents=contents,
+            config=config,
+        )
         
         # 9. Validate response
         if not response or not hasattr(response, 'text'):
