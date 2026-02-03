@@ -12,6 +12,7 @@ A FastAPI server that exposes Google's Gemini 3.0 models (Pro and Flash) as a RE
 - ✅ Configurable thinking levels - Model-specific levels (per request)
 - ✅ Configurable media resolution - LOW, MEDIUM, or HIGH (per request)
 - ✅ Dynamic system prompts - Control AI behavior per request
+- ✅ Code execution tool - Enable for high-resolution image analysis
 
 ## Quick Start
 
@@ -147,7 +148,8 @@ curl -X POST "http://localhost:8000/generate" \
   "json_schema": { ... } (optional),
   "model": "gemini-3-pro-preview" | "gemini-3-flash-preview" (optional, default: "gemini-3-pro-preview"),
   "thinking_level": "LOW" | "HIGH" (Pro) or "minimal" | "low" | "medium" | "high" (Flash) (optional, default: "HIGH"),
-  "media_resolution": "LOW" | "MEDIUM" | "HIGH" (optional, default: "MEDIUM")
+  "media_resolution": "LOW" | "MEDIUM" | "HIGH" (optional, default: "MEDIUM"),
+  "enable_code_execution": true | false (optional, default: false)
 }
 ```
 
@@ -158,11 +160,12 @@ curl -X POST "http://localhost:8000/generate" \
   "output": "...",
   "input_tokens": 1234,
   "output_tokens": 567,
-  "total_tokens": 1801
+  "total_tokens": 1801,
+  "warning": "Optional warning message if configuration is suboptimal"
 }
 ```
 
-**Note:** `output` is a string by default, or a JSON object/array when `json_schema` is provided.
+**Note:** `output` is a string by default, or a JSON object/array when `json_schema` is provided. The `warning` field appears when code execution is enabled without HIGH thinking level.
 
 ## CURL Examples
 
@@ -277,6 +280,38 @@ curl -X POST "http://localhost:8000/generate" \
 }
 ```
 
+### 8. Code Execution for High-Resolution Image Analysis
+
+```bash
+curl -X POST "http://localhost:8000/generate" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-server-api-key-here" \
+  -d '{
+    "user_prompt": "Analyze this high-resolution image in detail and extract all text",
+    "image_urls": ["https://example.com/high-res-document.jpg"],
+    "enable_code_execution": true,
+    "thinking_level": "HIGH",
+    "media_resolution": "HIGH"
+  }'
+```
+
+**Optimal Configuration:**
+- `enable_code_execution: true` - Enables code execution tool
+- `thinking_level: "HIGH"` - Recommended for best results
+- `media_resolution: "HIGH"` - For detailed image analysis
+
+**Response with suboptimal configuration:**
+
+```json
+{
+  "output": "Analysis results...",
+  "input_tokens": 2341,
+  "output_tokens": 892,
+  "total_tokens": 3233,
+  "warning": "Code execution is enabled but thinking level is not set to HIGH. For optimal performance with code execution, especially for high-resolution image analysis, it is recommended to use thinking_level='HIGH'."
+}
+```
+
 ## Testing
 
 ### Run Tests
@@ -341,6 +376,15 @@ safety check
 - **LOW** - Faster processing, lower detail
 - **MEDIUM** - Balanced quality and speed (recommended)
 - **HIGH** - Maximum detail, slower processing
+
+### Code Execution (`enable_code_execution`)
+
+**Optional** - Enable code execution tool for advanced image analysis (default: `false`)
+
+- **false** - Standard generation without code execution
+- **true** - Enables code execution tool for high-resolution image analysis
+
+> **⚠️ Important:** When `enable_code_execution` is set to `true`, it is **highly recommended** to use `thinking_level: "HIGH"` for optimal performance. If a lower thinking level is used, the API will return a warning message but will still process the request.
 
 ## Project Structure
 

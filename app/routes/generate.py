@@ -82,6 +82,27 @@ def build_thinking_config(thinking_level: str, model: str) -> types.ThinkingConf
     return types.ThinkingConfig(thinking_level=thinking_enum)
 
 
+def validate_code_execution_config(enable_code_execution: bool, thinking_level: str) -> dict:
+    """Validate code execution configuration and return warning if needed.
+    
+    Args:
+        enable_code_execution: Whether code execution is enabled
+        thinking_level: Current thinking level setting
+        
+    Returns:
+        dict with 'warning' key if validation fails, empty dict otherwise
+    """
+    if enable_code_execution and thinking_level.upper() != "HIGH":
+        return {
+            "warning": (
+                "Code execution is enabled but thinking level is not set to HIGH. "
+                "For optimal performance with code execution, especially for high-resolution "
+                "image analysis, it is recommended to use thinking_level='HIGH'."
+            )
+        }
+    return {}
+
+
 @router.post("/generate", response_model=GenerateResponse)
 @limiter.limit(RATE_LIMIT)
 async def generate(
@@ -180,14 +201,32 @@ async def generate(
         
         config = types.GenerateContentConfig(**config_params)
         
+        # 7.5. Validate code execution configuration
+        validation_result = validate_code_execution_config(
+            data.enable_code_execution, 
+            data.thinking_level
+        )
+        
+        # 7.6. Add code execution tool if enabled
+        tools = None
+        if data.enable_code_execution:
+            tools = [types.Tool(code_execution=types.ToolCodeExecution())]
+            logger.info("Code execution tool enabled for high-resolution image analysis")
+        
         # 8. Generate content
         client = get_gemini_client()
         logger.info(f"Generating content with model: {selected_model}")
-        response = client.models.generate_content(
-            model=selected_model,
-            contents=contents,
-            config=config,
-        )
+        
+        # Build generate_content arguments
+        generate_args = {
+            "model": selected_model,
+            "contents": contents,
+            "config": config,
+        }
+        if tools:
+            generate_args["tools"] = tools
+        
+        response = client.models.generate_content(**generate_args)
         
         # 9. Validate response
         if not response or not hasattr(response, 'text'):
@@ -223,19 +262,27 @@ async def generate(
         # 12. Log usage
         has_schema = "structured" if data.json_schema else "natural"
         model_short = selected_model.replace("-preview", "").replace("gemini-", "")
+        code_exec_status = "code_exec=ON" if data.enable_code_execution else "code_exec=OFF"
         logger.info(
-            f"[{model_short}] mode={has_schema} "
+            f"[{model_short}] mode={has_schema} {code_exec_status} "
             f"thinking_level={data.thinking_level} "
             f"media_res={resolution} "
             f"tokens={input_tokens}/{output_tokens}/{total_tokens}"
         )
         
-        return GenerateResponse(
-            output=parsed_output,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            total_tokens=total_tokens,
-        )
+        # 13. Build response with optional warning
+        response_data = {
+            "output": parsed_output,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": total_tokens,
+        }
+        
+        # Add warning if code execution validation failed
+        if validation_result:
+            response_data["warning"] = validation_result["warning"]
+        
+        return GenerateResponse(**response_data)
         
     except HTTPException:
         raise
